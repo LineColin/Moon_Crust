@@ -5,7 +5,7 @@ Numerical modeling of the formation of the lunar crust. These simple scripts giv
 
 Function library
 
-- CrustFormation_figures.py
+- CrustFormation_fig.py
 
 Executable that produces different figures : evolution of the radius of the crust and solid cumulates, temperature and distribution of radiogenic elements in the crust and different fluxes.
 
