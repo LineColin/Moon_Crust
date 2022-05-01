@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from scipy import sparse
 import scipy.sparse.linalg as LA
+import pandas as pd 
 
 
 def default_settings():
