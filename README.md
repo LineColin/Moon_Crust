@@ -1,5 +1,5 @@
 # Moon's Crust Formation
-Numerical modeling of the formation of the lunar crust. These simple scripts give an overview of the crystallization of the lunar magma ocean from the advection diffusion equation. The Moon is supposed to crystallize uniformly at the top and bottom.
+Numerical modeling of the formation of the lunar crust. These simple scripts give an overview of the crystallization of the lunar magma ocean from the advection diffusion equation. The Moon is supposed to crystallize uniformly at the top and bottom. For all the math see  `documentation.pdf`.
 
 - CrustFormation.py
 
