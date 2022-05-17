@@ -40,6 +40,7 @@ def default_settings():
     rcParams['axes.labelweight'] = 'bold'
     rcParams['font.sans-serif'] = 'Arial'
     rcParams['figure.titlesize'] = 25
+    rcParams['font.size'] = 20
     
     return
 
@@ -85,7 +86,7 @@ def Diffusion(y, n, dt, dy, K, T_top, T_bot):
 
     #M = sparse.csc_matrix(M)
     
-    return M, R
+    return M, R, r_center
 
 # =================================
 
@@ -177,7 +178,6 @@ def Evolution(n, param):
     dy = l/n
     dt = cfl*dr**2 /K
     
-    #h_r_0 = np.linspace(0, h_CRUST, n)
     
     # calculation matrix
     h_r = np.ones(n)*h_CRUST
@@ -204,24 +204,21 @@ def Evolution(n, param):
     h_C = h_CRUST*V_CRUST
     H_CRUST = [h_C]
     H_TOT = [h_LMO*V_LMO + h_CRUST*V_CRUST]
+    H_TOT_verif = [H_TOT[0]/(rho*V_MOON)]
     h_LMO_t = [h_LMO]
     
     F_Lat = []
-    F_cond = []
+    F_cond_bot = []
+    F_cond_top = []
     F_h_LMO = []
     F_h_CRUST = []
-    F_int = [0]
-    F_TOT = [0]
+    F_int = []
     
     
     i = 1
     
     while R_bot-R_SC > 200 and t/3.15E13 < 500:
         
-    
-        #TIME
-    
-        #TIME
     
         a = cfl*dr**2 /K
         b = cfl*dr/np.abs(dR_bot)
@@ -270,6 +267,7 @@ def Evolution(n, param):
         H_CRUST.append(h_C)
         H_LMO.append(h_LMO*V_LMO*np.exp(-Lambda*t/3.15E7))
         H_TOT.append(H_CRUST[i] + H_LMO[i])
+        H_TOT_verif.append(H_TOT[i]/(rho*V_MOON))
         
         
         # TEMPERATURE (diffusion + advection)
@@ -283,7 +281,7 @@ def Evolution(n, param):
         u_h = dR_bot*(y-2)/(R_top - R_bot)
         
         
-        L, R = Diffusion(y, n, dt, dy, K, T_top, T_bot)
+        L, R, r_center = Diffusion(y, n, dt, dy, K, T_top, T_bot)
         
         
         A_h = Advection(u_h, dy, dt)
@@ -293,18 +291,17 @@ def Evolution(n, param):
         N = sparse.csc_matrix(N)
         h_r = LA.spsolve(N, h_r)
         
-        
         V = T + R + (dt/(rho*Cp*dT))*h_r*np.exp(-Lambda*t/3.15E7)
         M = I - L + A
         M = sparse.csc_matrix(M)
         T = LA.spsolve(M, V)
         
         F_Lat.append(-rho*Lat*dR_bot*R_bot**2/C_E)
-        F_cond.append(-k*dT*(T[-2]-T[-1])/dr)
-        F_h_LMO.append(H_LMO[i]/(4*np.pi*R_bot**2))
-        F_h_CRUST.append(h_C/(4*np.pi*R_bot**2))
-        
-        #F_TOT.append(F_cond[i] + F_Lat[i] + F_h_LMO[i] + F_h_CRUST[i])# + F_int[i])
+        F_cond_bot.append(-k*dT*4*np.pi*R_bot**2 *(T[-2]-T[-1])/dr)
+        F_cond_top.append(k*dT*4*np.pi*R_top**2 *(T[1]-T[0])/dr)
+        F_h_LMO.append(H_LMO[i])
+        F_h_CRUST.append(h_C)
+        #F_int.append()
         
         i+=1
         
@@ -316,9 +313,10 @@ def Evolution(n, param):
             'r CRUST':radius_CRUST, 'r CUMULATS': radius_SC, 
             'VOLUME TOT':VOLUME_TOT, 'VOLUME CRUST': VOLUME_CRUST, 'VOLUME SC':VOLUME_SC,
             'VOLUME LMO':VOLUME_LMO, 'H TOT': H_TOT, 'H CRUST':H_CRUST, 
-            'H LMO':H_LMO, 'dR/dt':dR_dt, 'h LMO':h_LMO_t, 'F Lat':F_Lat,
-            'F Cond':F_cond, 'F h LMO': F_h_LMO, 'F h CRUST':F_h_CRUST,
-            'F int':F_int, 'F TOT': F_TOT}    
+            'H LMO':H_LMO, 'h TOT':H_TOT_verif, 'dR/dt':dR_dt, 'h LMO':h_LMO_t, 'F Lat':F_Lat,
+            'F Cond bot':F_cond_bot, 'F Cond top':F_cond_top, 
+            'F h LMO': F_h_LMO, 'F h CRUST':F_h_CRUST,
+            'F int':F_int}    
         
     print('end')
     
