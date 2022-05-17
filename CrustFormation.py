@@ -49,6 +49,22 @@ def default_settings():
 
 
 def Diffusion(y, n, dt, dy, K, T_top, T_bot):
+    """
+    Function to define a matrice for diffusion problem
+    -------
+    input
+    y : list, grid in space
+    n : int, number of point
+    dt : float, time step
+    dy : float, space step
+    K : float, thermal diffusivity
+    T_top, T_bot : float, Temperature at the top and bottom for boundary condition
+    -------
+    output
+    M : array
+    R : array, rest for boundary condition
+    r_center : array, dimensionnal space grid
+    """
 
     R = np.zeros(n)
     
@@ -91,6 +107,17 @@ def Diffusion(y, n, dt, dy, K, T_top, T_bot):
 # =================================
 
 def Advection(u, dy, dt):
+    """
+    Function to define a matrice for advection problem
+    -------
+    input
+    u : array, array of speed in space
+    dy : float, space step
+    dt : float, time step
+    -------
+    output
+    A : array
+    """
     
     u_abs = np.abs(u)
     f = dt/(dy*4)
@@ -116,7 +143,16 @@ def Advection(u, dy, dt):
 # =================================
 
 def Evolution(n, param):
-    
+    """
+    Function to describe the evolution of the crust
+    -------
+    input
+    n : int, number of point in space
+    param : dictionary, set of parameters
+    -------
+    output
+    data : dictionary, list for different computed value
+    """
     
     print('start')
     
@@ -276,18 +312,14 @@ def Evolution(n, param):
     
         dr = L/n
     
-        u_T = dR_bot*(y - 2)/((R_top - R_bot))
-        
-        u_h = dR_bot*(y-2)/(R_top - R_bot)
+        u = dR_bot*(y - 2)/((R_top - R_bot))
         
         
         L, R, r_center = Diffusion(y, n, dt, dy, K, T_top, T_bot)
         
+        A = Advection(u, dy, dt)
         
-        A_h = Advection(u_h, dy, dt)
-        A = Advection(u_T, dy, dt)
-        
-        N = I + A_h
+        N = I + A
         N = sparse.csc_matrix(N)
         h_r = LA.spsolve(N, h_r)
         
