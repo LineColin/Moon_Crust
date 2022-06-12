@@ -15,39 +15,6 @@ import matplotlib.pyplot as plt
 import CumulatFormation as CU
 
 
-def default_settings():
-    """ settings for the figure style """
-    rcParams['xtick.top'] = False
-    rcParams['ytick.right'] = False
-    rcParams['xtick.minor.visible'] = True
-    rcParams['ytick.minor.visible'] = True
-    rcParams['xtick.major.width'] = 1.5
-    rcParams['ytick.major.width'] = 1.5
-    rcParams['xtick.minor.width'] = 1
-    rcParams['ytick.minor.width'] = 1
-    rcParams['xtick.major.size'] = 5
-    rcParams['ytick.major.size'] = 5
-    rcParams['xtick.minor.size'] = 2.5
-    rcParams['ytick.minor.size'] = 2.5
-    rcParams['xtick.labelsize'] = 15
-    rcParams['ytick.labelsize'] = 15
-    rcParams['legend.edgecolor'] = 'k'
-    rcParams['legend.framealpha'] = 1
-    rcParams['legend.shadow'] = True
-    rcParams['legend.handlelength'] = 3.0
-    rcParams['axes.linewidth'] = 1.5
-    rcParams['axes.titlepad'] = 9.0
-    rcParams['axes.titlesize'] = 15
-    rcParams['axes.titleweight'] = 'bold'
-    rcParams['axes.labelsize'] = 18
-    rcParams['axes.labelweight'] = 'bold'
-    rcParams['font.sans-serif'] = 'Arial'
-    rcParams['figure.titlesize'] = 25
-    rcParams['font.size'] = 20
-    
-    return
-
-
 # =================================
 
 
@@ -149,7 +116,20 @@ def h_anal(r, D, h0):
 
 # =================================
 
-def Evolution(n, param):
+def T_anal(param, R_top, R_bot, h, T_S, r):
+    
+    k = param['k']
+    
+    C1 = (-(T_S - T_E) - h*(R_top**2 - R_bot**2)/(6*k))/(1/R_top - 1/R_bot)
+    C2 = T_S + C1/R_top + h*R_top**2/(6*k)
+
+    T0 = C2 - C1/r - h*r**2/(6*k)
+    
+    return T0
+
+# =================================
+
+def Evolution(n, param, output):
     
     
     print('start')
@@ -163,6 +143,7 @@ def Evolution(n, param):
     Lat = param['Lat']
     K_CRUST = k_CRUST/(rho*Cp)
     K_SC = k_SC/(rho*Cp)
+    h0 = param['h0']
     
     D = param['D_AN']
     Lambda = param['lambda']
@@ -173,13 +154,13 @@ def Evolution(n, param):
     ### INITIAL PARAMETERS ###
     
     L = param['L0']
-    dR_CRUST = param['dR_CRUST0']
+    dR_CRUST = param['dR_bot0']
     
     ### INITIAL CONDITIONS ###
     
     # import the data from first stage 
     
-    data = CU.Evolution(D, C_0, C_E)
+    data = CU.Evolution(D, C_0, C_E, h0)
     
     n_SC = n
     
@@ -203,10 +184,8 @@ def Evolution(n, param):
     # temperature
     
     T_E = int(data['Temp'][-1])
-    print(T_E)
     T_S = data['T surface'][-1]
     T_CORE = data['Temp'][0]
-    print(T_S)
     
     dT_CRUST = T_E - T_eq
     dT_SC = T_CORE - T_E
@@ -216,21 +195,16 @@ def Evolution(n, param):
     
     
     # radiogenic heat
-    h_LMO_0 = data['H LMO'][-1]
-    print(h_LMO_0)
+    h_LMO_0 = data['h']
     h_LMO = h_LMO_0/(D*(phi_CRUST+phi_SC) + 1 - phi_CRUST - phi_SC)
     h_CRUST = D*h_LMO
     h_SC = D*h_LMO
-    print('h_SC', h_SC)
-    print('h(r)', data['h(r)'][-1])
     
     ### SCALING ###
     
     # temperature
     
     T0_CRUST = (T0_CRUST - T_eq) / dT_CRUST
-    plt.figure()
-    plt.plot(T0_CRUST)
     
     Ttop_CRUST = T0_CRUST[0]
     Tbot_CRUST = T0_CRUST[-1]
@@ -252,6 +226,7 @@ def Evolution(n, param):
     l_SC = y_SC[-1] - y_SC[0]
     
     L_CRUST = R_MOON - R_CRUST
+    print(L_CRUST)
     L_SC = R_SC - R_CORE
     
     dr_CRUST = L_CRUST / n
@@ -260,9 +235,6 @@ def Evolution(n, param):
     dy_CRUST = l_CRUST / n
     dy_SC = l_SC / n_SC
     
-    plt.figure()
-    plt.plot(T0_CRUST, r_CRUST)
-    print(T0_CRUST[0])
     # time
     
     t= 0
@@ -271,8 +243,6 @@ def Evolution(n, param):
     dt = cfl*dr_CRUST**2 /K_CRUST
     
     ### CALCULATION MATRIX ###
-    
-    fig, ax = plt.subplots(ncols=1, nrows = 3, figsize=(10,10), sharex=False)
     
     I = np.identity(n)
     
@@ -304,12 +274,21 @@ def Evolution(n, param):
     H_CRUST = [h_CRUST*dV_CRUST]
     H_SC = [h_SC*dV_SC]
     H_TOT = [h_LMO_0*V_LMO_0]
+    Ra_CRUST = [(alpha*rho*g*dT_CRUST*L_CRUST**3 )/(K_CRUST*mu)]
+    Ra_SC = [(alpha*rho*g*dT_SC*L_SC**3) /(K_SC*mu)]
     
     Ts = [T_S]
     
+    ### FIGURES ###
+    
+    plt.figure(figsize=(10,10))
+    plt.grid(color='gray', linestyle='--', linewidth=0.75)
+    plt.xlabel(R'T $[K]$')
+    plt.ylabel(R'r $[km]$')
+    
+    
+    
     i = 1
-    
-    
     
     while R_CRUST - R_SC > 500 and t/3.15E13 < 500 :
         
@@ -339,8 +318,11 @@ def Evolution(n, param):
         time.append(t/3.15E13)
         
         # crust and cumulates evolution 
+        a = k_CRUST*(T_CRUST[-2] - T_CRUST[-1])*dT_CRUST*C_E/(dr_CRUST*rho*Lat)
+        b = k_SC*R_SC**2 *dT_SC*(T_SC[-2] - T_SC[-1])*C_E/(dr_SC *rho*Lat*R_CRUST**2)
+        c = h_LMO*np.exp(-Lambda*t/3.15E7)*C_E*V_LMO/(rho*Lat*4*np.pi*R_CRUST**2) 
         
-        dR_CRUST = k_CRUST*(T_CRUST[-2] - T_CRUST[-1])*dT_CRUST*C_E/(dr_CRUST*rho*Lat) + h_LMO*np.exp(-Lambda*t/3.15E7)*C_E*V_LMO/(rho*Lat*4*np.pi*R_CRUST**2)
+        dR_CRUST = (a - b + c)
         dR_SC = -(1-C_E)*dR_CRUST*R_CRUST**2 /(C_E*R_SC**2)
         
         R_SC += dt*dR_SC
@@ -426,21 +408,33 @@ def Evolution(n, param):
         
         Ttop_CRUST = (T_S - T_eq)/(T_E - T_eq)
         
+        Ra_CRUST.append((alpha*rho*g*dT_CRUST*L_CRUST**3 )/(K_CRUST*mu))
+        
+        Ra_SC.append((alpha*rho*g*dT_SC*L_SC**3) /(K_SC*mu))
         
         
         if i%5000 ==  0 : 
-            ax[0].plot(T_CRUST, rc_CRUST)
-            ax[1].plot(hr_SC, rc_SC)
-            ax[2].plot(hr_CRUST, rc_CRUST)
-            print(Ttop_CRUST)
+            
+            plotlabel = 't = %1.3f'%time[i]
+            plt.plot([i*(T_E - T_eq) + T_eq for i in T_CRUST], [i/1000 for i in rc_CRUST], label=plotlabel)#, color = plt.get_cmap('jet')(i/))
+            
+            print(dT_CRUST, L_CRUST)
+    
             
         i += 1
-        
+    
+    h = np.mean(hr_CRUST)
+    Ta = T_anal(param, R_MOON, R_CRUST, h, T_S, rc_CRUST)
+    plt.plot(Ta, [i/1000 for i in rc_CRUST], 'k--')
+    plt.plot([i*(T_E - T_eq) + T_eq for i in T_CRUST], [i/1000 for i in rc_CRUST], label='t = %1.3f'%time[-1])
+    plt.legend()
+    plt.savefig(output)
+    
     data2 = {'time':time, 'radius CRUST':radius_CRUST, 'radius SC':radius_SC,
             'T CRUST':T_CRUST, 'T SC':T_SC, 'h(r) CRUST':hr_CRUST, 
             'h(r) SC':hr_SC, 'H LMO':H_LMO, 'H CRUST':H_CRUST, 'H SC':H_SC, 'H TOT':H_TOT,
             'V LMO':VOLUME_LMO, 'V CRUST':VOLUME_CRUST, 'V SC':VOLUME_SC, 'V TOT':VOLUME_TOT, 
-            'T surface':Ts, 'y CRUST':r_CRUST, 'y SC':r_SC}
+            'T surface':Ts, 'y CRUST':r_CRUST, 'y SC':r_SC, 'Ra CRUST':Ra_CRUST, 'Ra SC':Ra_SC}
     
     print('end')
     
@@ -466,3 +460,7 @@ D_SUN = 1495E5
 T_SUN = 5780
 
 T_eq = T_SUN * np.sqrt(R_SUN/(2*D_SUN)) * (1 - A_MOON)**0.25  
+
+g = 1.62
+alpha = 1E-5
+mu = 1E18
